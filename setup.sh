@@ -32,7 +32,6 @@ echo "🧹 Converting line endings to Unix format..."
 dos2unix /tmp/deploy_all.sh
 dos2unix /tmp/deploy_project.sh
 dos2unix /tmp/start_jars.sh
-dos2unix /tmp/approval_server/app.py
 
 echo "🚚 Moving scripts to /home/script..."
 sudo mv /tmp/deploy_all.sh /home/script/
