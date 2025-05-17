@@ -17,7 +17,7 @@ sudo chown "$USER":"$USER" /home/script /home/runner
 
 echo "⬇️ Downloading files into /home/script..."
 
-BASE_URL="https://config.gblinfra.in"
+BASE_URL="https://configs.gblinfra.in"
 
 # Downloading files as the current user (to owned dirs), then moving them with sudo if needed
 curl -L -o /tmp/deploy_all.sh "$BASE_URL/deploy_all.sh"
