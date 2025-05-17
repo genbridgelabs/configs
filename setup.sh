@@ -1,90 +1,78 @@
 #!/bin/bash
 
-set -e
-
 echo "=== Setup started ==="
 
-# Variables
-APP_DIR="/home/application"        # Adjust if your app.py is elsewhere
-SCRIPT_DIR="/home/script"          # Your scripts location
-RUNNER_DIR="/home/runner"          # For start_jars.sh
-VENV_DIR="$APP_DIR/venv"
-PYTHON_BIN="$VENV_DIR/bin/python3"
-PIP_BIN="$VENV_DIR/bin/pip"
-
-# 1. Update and install python3-venv if not present
+# Install required system packages
 echo "Installing Python3 venv and dependencies..."
-sudo apt-get update
-sudo apt-get install -y python3 python3-venv python3-pip
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip
 
-# 2. Create virtual environment (if not exists)
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating python virtual environment..."
-    python3 -m venv "$VENV_DIR"
+# Create Python virtual environment and install Flask
+APP_DIR="/home/application"
+mkdir -p "$APP_DIR"
+cd "$APP_DIR"
+
+if [ ! -d "venv" ]; then
+  echo "Creating python virtual environment..."
+  python3 -m venv venv
 fi
 
-# 3. Activate venv and install python packages
 echo "Installing required python packages in virtualenv..."
-"$PIP_BIN" install --upgrade pip
-"$PIP_BIN" install flask flask-mail
+source venv/bin/activate
+pip install --upgrade pip
+pip install flask flask-mail
+deactivate
 
-# 4. Create systemd service for Flask server
+# Create systemd service for Flask server
 echo "Creating systemd service for Flask server..."
-
 sudo tee /etc/systemd/system/flask_build_server.service > /dev/null <<EOF
 [Unit]
 Description=Flask Build Server
 After=network.target
 
 [Service]
-User=$(whoami)
+User=root
 WorkingDirectory=$APP_DIR
-Environment=PATH=$VENV_DIR/bin
-ExecStart=$PYTHON_BIN $APP_DIR/app.py
+ExecStart=$APP_DIR/venv/bin/python3 $APP_DIR/server.py
 Restart=always
-RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# 5. Create systemd service for start_jars.sh
+# Create systemd service for starting JARs
 echo "Creating systemd service for starting JARs..."
-
 sudo tee /etc/systemd/system/start_jars.service > /dev/null <<EOF
 [Unit]
-Description=Start JARs Service
+Description=Start All JARs
 After=network.target
 
 [Service]
-User=$(whoami)
-WorkingDirectory=$SCRIPT_DIR
-ExecStart=$SCRIPT_DIR/start_jars.sh
-Restart=no
+Type=simple
+ExecStart=/home/script/start_jars.sh
+Restart=on-failure
+User=root
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# 6. Make sure start_jars.sh is executable
-chmod +x "$SCRIPT_DIR/start_jars.sh"
-
-# 7. Reload systemd daemon and enable services
+# Enable and start the services
 echo "Enabling and starting services..."
+sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 sudo systemctl enable flask_build_server.service
-sudo systemctl start flask_build_server.service
-
 sudo systemctl enable start_jars.service
-sudo systemctl start start_jars.service
+sudo systemctl restart flask_build_server.service
+sudo systemctl restart start_jars.service
+
+# Optional: run deploy_all.sh if present
+if [ -f /home/script/deploy_all.sh ]; then
+    echo "Triggering deploy_all.sh..."
+    chmod +x /home/script/deploy_all.sh
+    /home/script/deploy_all.sh
+else
+    echo "WARNING: /home/script/deploy_all.sh not found. Skipping auto-deploy trigger."
+fi
 
 echo "=== Setup completed ==="
-
-# 8. Trigger deploy_all.sh now
-echo "Triggering deploy_all.sh..."
-chmod +x "$SCRIPT_DIR/deploy_all.sh"
-"$SCRIPT_DIR/deploy_all.sh"
-
-echo "Deploy_all.sh execution finished."
-echo "Use 'sudo systemctl status flask_build_server.service' to check Flask server status."
-echo "Use 'sudo systemctl status start_jars.service' to check JARs starter status."
