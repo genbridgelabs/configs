@@ -1,46 +1,90 @@
 #!/bin/bash
+
 set -e
 
-echo "🔄 Updating and upgrading system..."
-sudo apt update && sudo apt upgrade -y
+echo "=== Setup started ==="
 
-echo "📦 Installing system packages: Maven, Java 17, Redis, RabbitMQ, Python3, pip, venv..."
-sudo apt install -y openjdk-17-jdk maven redis-server rabbitmq-server python3 python3-pip python3-venv
+# Variables
+APP_DIR="/home/application"        # Adjust if your app.py is elsewhere
+SCRIPT_DIR="/home/script"          # Your scripts location
+RUNNER_DIR="/home/runner"          # For start_jars.sh
+VENV_DIR="$APP_DIR/venv"
+PYTHON_BIN="$VENV_DIR/bin/python3"
+PIP_BIN="$VENV_DIR/bin/pip"
 
-echo "🐍 Setting up Python virtual environment for Flask app..."
-sudo mkdir -p /home/runner
-sudo chown "$USER":"$USER" /home/runner
+# 1. Update and install python3-venv if not present
+echo "Installing Python3 venv and dependencies..."
+sudo apt-get update
+sudo apt-get install -y python3 python3-venv python3-pip
 
-python3 -m venv /home/runner/venv
-/home/runner/venv/bin/pip install --upgrade pip
-/home/runner/venv/bin/pip install flask flask-mail
+# 2. Create virtual environment (if not exists)
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Creating python virtual environment..."
+    python3 -m venv "$VENV_DIR"
+fi
 
-echo "📁 Creating script directory..."
-sudo mkdir -p /home/script
-sudo chown "$USER":"$USER" /home/script
+# 3. Activate venv and install python packages
+echo "Installing required python packages in virtualenv..."
+"$PIP_BIN" install --upgrade pip
+"$PIP_BIN" install flask flask-mail
 
-echo "⬇️ Downloading files into /home/script..."
-BASE_URL="https://configs.gblinfra.in"
+# 4. Create systemd service for Flask server
+echo "Creating systemd service for Flask server..."
 
-curl -L -o /tmp/deploy_all.sh "$BASE_URL/deploy_all.sh"
-curl -L -o /tmp/deploy_project.sh "$BASE_URL/deploy_project.sh"
-curl -L -o /tmp/start_jars.sh "$BASE_URL/start_jars.sh"
-mkdir -p /tmp/approval_server
-curl -L -o /tmp/approval_server/app.py "$BASE_URL/approval_server/app.py"
+sudo tee /etc/systemd/system/flask_build_server.service > /dev/null <<EOF
+[Unit]
+Description=Flask Build Server
+After=network.target
 
-sudo mv /tmp/deploy_all.sh /home/script/
-sudo mv /tmp/deploy_project.sh /home/script/
-sudo mv /tmp/start_jars.sh /home/script/
-sudo mkdir -p /home/script/approval_server
-sudo mv /tmp/approval_server/app.py /home/script/approval_server/
+[Service]
+User=$(whoami)
+WorkingDirectory=$APP_DIR
+Environment=PATH=$VENV_DIR/bin
+ExecStart=$PYTHON_BIN $APP_DIR/app.py
+Restart=always
+RestartSec=5
 
-echo "🔓 Making scripts executable..."
-sudo chmod +x /home/script/deploy_all.sh
-sudo chmod +x /home/script/deploy_project.sh
-sudo chmod +x /home/script/start_jars.sh
-sudo chmod +x /home/script/approval_server/app.py
+[Install]
+WantedBy=multi-user.target
+EOF
 
-echo "✅ Setup complete."
-echo "📌 Python venv created at: /home/runner/venv"
-echo "👉 To activate: source /home/runner/venv/bin/activate"
-echo "📬 Flask-Mail and Flask installed inside venv."
+# 5. Create systemd service for start_jars.sh
+echo "Creating systemd service for starting JARs..."
+
+sudo tee /etc/systemd/system/start_jars.service > /dev/null <<EOF
+[Unit]
+Description=Start JARs Service
+After=network.target
+
+[Service]
+User=$(whoami)
+WorkingDirectory=$SCRIPT_DIR
+ExecStart=$SCRIPT_DIR/start_jars.sh
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 6. Make sure start_jars.sh is executable
+chmod +x "$SCRIPT_DIR/start_jars.sh"
+
+# 7. Reload systemd daemon and enable services
+echo "Enabling and starting services..."
+sudo systemctl daemon-reload
+sudo systemctl enable flask_build_server.service
+sudo systemctl start flask_build_server.service
+
+sudo systemctl enable start_jars.service
+sudo systemctl start start_jars.service
+
+echo "=== Setup completed ==="
+
+# 8. Trigger deploy_all.sh now
+echo "Triggering deploy_all.sh..."
+chmod +x "$SCRIPT_DIR/deploy_all.sh"
+"$SCRIPT_DIR/deploy_all.sh"
+
+echo "Deploy_all.sh execution finished."
+echo "Use 'sudo systemctl status flask_build_server.service' to check Flask server status."
+echo "Use 'sudo systemctl status start_jars.service' to check JARs starter status."
