@@ -67,10 +67,10 @@ Description=Start All Java JARs
 After=network.target
 
 [Service]
-Type=simple
+Type=oneshot
 User=$USER
 ExecStart=/home/script/start_jars.sh
-Restart=always
+RemainAfterExit=true
 
 [Install]
 WantedBy=multi-user.target
