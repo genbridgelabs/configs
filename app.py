@@ -34,7 +34,7 @@ builds = {}
 
 # Recipients
 recipients_to = ['chandanpradhan092@gmail.com', 'sunil.bhuyan@genbridgelabs.in', 'sangram.pradhan.keshari@gmail.com']
-cc_list = ['plaban.padhi@gmail.com', 'genbridgelabs@gmail.com', 'amareshpr.2022@gmail.com']
+cc_list = ['genbridgelabs@gmail.com', 'amareshpr.2022@gmail.com']
 
 def generate_approval_email(project_name, git_url):
     return f"""
@@ -50,7 +50,7 @@ def generate_approval_email(project_name, git_url):
             </ul>
             <p>To approve this build, click the button below:</p>
             <p>
-                <a href="http://127.0.0.1:5000/approve?project_name={project_name}&git_url={git_url}" target="_blank" style="background-color: #28a745; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Approve Build</a>
+                <a href="https://console.gblinfra.in/approve?project_name={project_name}&git_url={git_url}" target="_blank" style="background-color: #28a745; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Approve Build</a>
             </p>
             <p>Best regards,<br/>Build System</p>
         </div>
