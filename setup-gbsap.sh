@@ -7,7 +7,7 @@ APP_NAME="gbsap-backend"
 APP_DIR="/home/application/gbsap-backend"  # Change path if needed 
 DOMAIN="gbsap.gblinfra.in"
 NODE_PORT=3000                       # Change if your app uses a different port
-ENTRY_POINT="index.js"              # Change if your app has a different entry point
+ENTRY_POINT="app.js"                 # Change if your app has a different entry point
 
 # === SYSTEM SETUP ===
 echo "🔧 Updating system..."
