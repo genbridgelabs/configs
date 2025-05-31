@@ -5,7 +5,17 @@ echo "🔄 Updating and upgrading system..."
 sudo apt update && sudo apt upgrade -y
 
 echo "📦 Installing system packages: Maven, Java 17, Redis, RabbitMQ, Python3, pip, venv, dos2unix..."
-sudo apt install -y openjdk-17-jdk maven redis-server rabbitmq-server python3 python3-pip python3-venv dos2unix
+sudo apt install -y openjdk-17-jdk maven redis-server rabbitmq-server python3 python3-pip python3-venv dos2unix nginx certbot python3-certbot-nginx
+
+echo "🔐 Configuring Redis password and port..."
+sudo sed -i "s/^# requirepass .*$/requirepass Ui4WLMq0M8EDhfmt1Vts414jsArlkt1S/" /etc/redis/redis.conf
+sudo sed -i "s/^port .*$/port 12803/" /etc/redis/redis.conf
+sudo systemctl restart redis-server
+
+echo "🐇 Creating RabbitMQ user: ennomart"
+sudo rabbitmqctl add_user ennomart ennomart || echo "User may already exist"
+sudo rabbitmqctl set_user_tags ennomart administrator
+sudo rabbitmqctl set_permissions -p / ennomart ".*" ".*" ".*"
 
 echo "🐍 Setting up Python virtual environment for Flask app..."
 sudo mkdir -p /home/runner
@@ -76,6 +86,28 @@ RemainAfterExit=true
 WantedBy=multi-user.target
 EOF
 
+echo "🌐 Configuring Nginx reverse proxy for Flask server (console.gblinfra.in)..."
+sudo tee /etc/nginx/sites-available/console.gblinfra.in > /dev/null <<EOF
+server {
+    listen 80;
+    server_name console.gblinfra.in;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+echo "🔗 Enabling Nginx site and reloading..."
+sudo ln -sf /etc/nginx/sites-available/console.gblinfra.in /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+
 echo "🔌 Enabling and starting services..."
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
@@ -91,3 +123,10 @@ echo "✅ Setup complete."
 echo "📌 Flask venv: /home/runner/venv"
 echo "📬 Flask server service: flask_build_server"
 echo "☕ JAR runner service: start_jars"
+echo "🌐 Nginx config: /etc/nginx/sites-available/console.gblinfra.in"
+echo "🔐 RabbitMQ user: ennomart / ennomart"
+echo "🗝️ Redis password: Ui4WLMq0M8EDhfmt1Vts414jsArlkt1S"
+echo "🟢 Redis port: 12803"
+
+echo "🔐 To enable HTTPS with Certbot, run:"
+echo "    sudo certbot --nginx -d console.gblinfra.in"
