@@ -50,6 +50,10 @@ pm2 start "$ENTRY_POINT" --name "$APP_NAME"
 pm2 save
 pm2 startup --silent
 
+echo "💾 Setting up PM2 to auto-start on boot..."
+pm2 startup
+pm2 save
+
 # === SETUP NGINX ===
 echo "🌐 Configuring Nginx for $DOMAIN..."
 NGINX_CONF="/etc/nginx/sites-available/$DOMAIN"
@@ -80,4 +84,4 @@ if [[ "$enable_ssl" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   sudo certbot --nginx -d "$DOMAIN"
 fi
 
-echo "✅ Setup complete! App should be running at http://$DOMAIN"
+echo "✅ Setup complete! App should be running at https://$DOMAIN"
