@@ -121,6 +121,14 @@ def update_gbsap():
             "details": e.stderr
         }), 500
 
+@app.route('/HbtChk', methods=['GET'])
+def health_check():
+    return jsonify({
+        "status": "OK",
+        "message": "Service is running",
+        "uptime": True
+    }), 200
+
 @app.route('/approve', methods=['GET'])
 def approve():
     project_name = request.args.get('project_name')
