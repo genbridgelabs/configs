@@ -121,7 +121,7 @@ def update_gbsap():
             "details": e.stderr
         }), 500
 
-@app.route('/HbtChk', methods=['GET'])
+@app.route('/', methods=['GET'])
 def health_check():
     return jsonify({
         "status": "OK",
