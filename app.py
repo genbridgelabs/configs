@@ -105,6 +105,22 @@ def send_mail():
         app.logger.error(f"Failed to send approval email for project '{project_name}': {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/update-gbsap', methods=['POST'])
+def update_gbsap():
+    try:
+        result = subprocess.run(['/home/update-gbsap.sh'], capture_output=True, text=True, check=True)
+        app.logger.info(f"update-gbsap.sh output:\n{result.stdout}")
+        return jsonify({
+            "message": "Script executed successfully",
+            "output": result.stdout
+        }), 200
+    except subprocess.CalledProcessError as e:
+        app.logger.error(f"Error executing update-gbsap.sh: {e.stderr}")
+        return jsonify({
+            "error": "Script execution failed",
+            "details": e.stderr
+        }), 500
+
 @app.route('/approve', methods=['GET'])
 def approve():
     project_name = request.args.get('project_name')
